@@ -1,3 +1,8 @@
+---
+title: Languages
+layout: wikistyle
+---
+
 ## Python
 
 ## Perl 6
