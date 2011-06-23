@@ -1,0 +1,40 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+    <title>GitHub Pages - {{ page.title }}</title>
+  </head>
+  <body>
+    <div id="main">
+      <div id="header" class="basic" style="margin-bottom:20px">
+        <div class="site">
+        </div>
+      </div>
+
+      <div id="content" class="site">
+
+        {{ content }}
+
+      </div>
+
+      <div class="push"></div>
+    </div>
+
+    <div id="footer">
+      <div class="site">
+
+        <div class="info">
+          <div class="links">
+            <a href="http://github.com/blog"><b>Blog</b></a> |
+          </div>
+          <div class="company">
+           &copy;
+            {{ site.time | date: "%Y" }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

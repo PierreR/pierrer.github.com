@@ -1,1 +1,7 @@
-## Hello
+---
+title: Home
+layout: wikistyle
+---
+
+Coucou
+=====================
