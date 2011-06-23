@@ -3,5 +3,5 @@ title: Home
 layout: wikistyle
 ---
 
-* [[Languages]]
+* [Languages](http://pierrer.github.com/Languages)
 * 
