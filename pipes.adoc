@@ -1,13 +1,13 @@
 = Pipes
 Pierre Radermecker <pierrer@pi3r.be>
 2014
+
 :language: haskell
 :source-highlighter: pygments
-
-.Pre-Requisite
+:icons: font
 
 .StateT
-[TIP]
+[NOTE]
 ====
 [source, haskell]
 ----
@@ -18,7 +18,7 @@ newtype StateT s m a = StateT {
 ====
 
 .Free Monad
-[TIP]
+[NOTE]
 ====
 A Monad n is a free Monad for f
     if every Monad homomorphism from n to another monad m is equivalent to a natural transformation from f to m.
@@ -249,6 +249,7 @@ FreeT (Producer a m) m () -> Producer a m ()            ~  [[a]] ->  [a]
 
 Pipes-handle models the input/output stream analogy. An output stream accepts bytes (you write into it) whereas you read from an inputstream. The proxy that can "read from" in the pipes ecosystem is the consumer.
 By analogy, an output stream accepts output bytes and sends them to some sink. So you write into an output stream.
+
 
 
 == Lift
