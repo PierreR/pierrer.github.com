@@ -1,10 +1,12 @@
 = Pipes
 Pierre Radermecker <pierrer@pi3r.be>
 2014
+:language: haskell
+:source-highlighter: pygments
 
-== Pre-Requisite
-
-=== StateT
+.Pre-Requisite
+[TIP]
+====
 
 [source, haskell]
 ----
@@ -13,7 +15,7 @@ newtype StateT s m a = StateT {
 }
 ----
 
-=== Free Monad
+.Free Monad
 
 A Monad n is a free Monad for f
     if every Monad homomorphism from n to another monad m is equivalent to a natural transformation from f to m.
@@ -24,6 +26,8 @@ data Free f a = Free (f (Free f a)) | Pure a
 
 liftF :: Functor f => f a -> Free f a
 ----
+
+====
 
 == Primitives
 
@@ -95,7 +99,7 @@ With `for` you consume every element of a `Producer` the exact same way. If this
 
 Think of `next` as pattern matching on the head of the Producer. This Either returns a Left if the Producer is done or it returns a Right containing the next value, a, along with the remainder of the Producer:
 
-```{.lhs}
+```
 next :: Monad m => Producer a m r -> m (Either r (a, Producer a m r))
 ```
 
@@ -115,7 +119,7 @@ A consumer represents an effectful sink of values.  `await` blocks waiting for a
      +---------+
 ....
 
-[source,haskell]
+[source]
 ----
 await :: Monad m => Consumer' a m a
 
@@ -167,25 +171,26 @@ cat = forever $ do
 
 === Bidirectional API
 
-```
--- The response category
+.The response category
+....
 yield = respond
 for = (//>)
 (~>) = (/>/)
+....
 
--- The reply category
+.The reply category
+....
 await = request ()
-
-```
+....
 
 
 == Pipes-Parse
 
-=== Parser
+.Parser
+Parser is like Consumers but with the ability to keep the leftover
 
-Parser is like Consumers but with the ability to keep the leftover:
-
-```
+[source]
+----
 type Parser a m r = forall x . StateT (Producer a m x) m r
 
 draw :: (Monad m) => Parser a m (Maybe a)
@@ -193,24 +198,31 @@ draw :: (Monad m) => Parser a m (Maybe a)
 runStateT  :: Parser a m r -> Producer a m x -> m (r, Producer a m x)
 evalStateT :: Parser a m r -> Producer a m x -> m  r
 execStateT :: Parser a m r -> Producer a m x -> m (   Producer a m x)
-```
+----
 
-=== Lenses
-
+.Lenses
 Lenses served as transformation in both directions.
-[source, haskell]
+
+[source]
 ----
 splitAt
     :: Monad m
     => Int
     -> Lens' (Producer a m x) (Producer a m (Producer a m x))
-
-zoom :: Lens' (Producer a m x) (Producer b m y)
-      -> Parser b m r
-      -> Parser a m r
 ----
 
-Iso': don't provide them if there is error messages involved in encoding and decoding. Stick to Lens'
+.zoom
+Connect lenses to Parsers
+[source]
+----
+zoom 
+    :: Lens' (Producer a m x) (Producer b m y)
+    -> Parser b m r
+    -> Parser a m r
+----
+
+`Iso'`: don't provide them if there is error messages involved in encoding and decoding. Stick to `Lens'`
+
 
 == Pipes-Group
 
@@ -218,7 +230,7 @@ FreeT nests each subsequent Producer within the return value of the previous Pro
 
 split / transform / join paradigm
 
-[source, haskell,numbered]
+[source]
 ----
 -- A "splitter" such as `groupBy`, `chunksOf` or `splitOn`
 Producer a m ()           -> FreeT (Producer a m) m ()  ~   [a]  -> [[a]]
@@ -239,15 +251,19 @@ By analogy, an output stream accepts output bytes and sends them to some sink. S
 
 == Lift
 
-[source, haskell]
+.StateP
+Run `StateT` in the base monad of the Proxy passed as a second argument.
+[source]
 ----
--- Run `StateT` in the base monad of the Proxy passed as a second argument
--- The first arg is the state (usually of type p0roxy) of this `StateT`
-runStateP :: (Monad m) =>
-    s -> Proxy a' a b' b (S.StateT s m) r -> Proxy a' a b' b m (r, s)
+runStateP
+    :: (Monad m)
+    => s -- state (usually of type proxy)
+    -> Proxy a' a b' b (S.StateT s m) r
+    -> Proxy a' a b' b m (r, s)
+----
 
 By example:
-
+----
 -- !! this return a Producer a m (Maybe r, Producer a m r) !!
 -- This makes sense you are actually running the StateT monad from Producer a (StateT (Producer a m r) m r) r
 -- r is either Just which means the original Producer is empty or Nothing which mean you should go on drawing from the original Producer
@@ -269,16 +285,36 @@ runStateP p $ do -- p will be used to feed the underlying proxy
 ----
 
 
-== Lesssons
 
-=== pipes-csv
+== Concurrent API
 
-
-If you want to transform a Producer of ByteString into another Producer, for instance of csv records, be careful to be immune of empty bytestring chunks !
-
-Indeed `pipes-bytestring` operations don't guarantee that they won't drop empty bytestring chunks or create new ones.
+You have got a mailbox !
 
 [source, haskell]
+----
+(output, input) <- spawn Unbounded
+----
+
+....
+producer >-> (consumer) output >...> input (producer) >-> consumer
+....
+Send to the mailbox using `toOutput output` (output is able to sent mail). So `toOutput` transforms the output into a consumer.
+Read from the mailbox using `fromInput input` (input is able to receive mail). So `fromInput` transforms the input into a producer.
+
+[source]
+----
+newtype Input a = Input { recv :: S.STM (Maybe a) }
+----
+
+== Errors management
+
+.Empty Bytestring
+[WARNING]
+====
+If you want to transform a Producer of ByteString into another Producer, for instance of csv records, be careful to be immune of empty bytestring chunks.
+Indeed `pipes-bytestring` operations don't guarantee that they won't drop empty bytestring chunks or create new ones.
+
+[source]
 ----
 -- first take the next elem of the source
 x <- lift (next source)
@@ -288,35 +324,13 @@ x <- lift (next source)
                 if (B.null bs)
                 then continue k source'
                 else feedParser (k bs) source'
-
 ----
-
-
-== Concurrent API
-
-You have got a mailbox !
-
-[source, haskell]
-----
-(output, input) <- spawn Unbounded
-
-----
-
-....
-producer >-> (consumer) output >...> input (producer) >-> consumer
-....
-Send to the mailbox using `toOutput output` (output is able to sent mail). So `toOutput` transforms the output into a consumer.
-Read from the mailbox using `fromInput input` (input is able to receive mail). So `fromInput` transforms the input into a producer.
-
-[source, haskell]
-----
-newtype Input a = Input { recv :: S.STM (Maybe a) }
-----
+====
 
 == Arrows and push based pipes
 
-Events are discrete <-- PUSH based
-Behaviors are continuous <-- PULL based
+Events are discrete <- PUSH based. +
+Behaviors are continuous <- PULL based
 
 `ArrowChoice` corresponds to concurrency and `Arrow` corresponds to parallelism
 
@@ -324,7 +338,8 @@ Behaviors are continuous <-- PULL based
 
 https://github.com/Gabriel439/Haskell-Pipes-Parse-Library/blob/2.0.0/src/Pipes/Parse.hs#L236
 
-```
+[source]
+----
 type Producer b =                    Proxy Void () () b
 type Producer' b m r = forall x' x . Proxy x' x () b m r
-```
+----
