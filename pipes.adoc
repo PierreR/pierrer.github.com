@@ -5,18 +5,21 @@ Pierre Radermecker <pierrer@pi3r.be>
 :source-highlighter: pygments
 
 .Pre-Requisite
+
+.StateT
 [TIP]
 ====
-
 [source, haskell]
 ----
 newtype StateT s m a = StateT {
     runStateT :: s -> m (a, s)
 }
 ----
+====
 
 .Free Monad
-
+[TIP]
+====
 A Monad n is a free Monad for f
     if every Monad homomorphism from n to another monad m is equivalent to a natural transformation from f to m.
 
@@ -26,7 +29,6 @@ data Free f a = Free (f (Free f a)) | Pure a
 
 liftF :: Functor f => f a -> Free f a
 ----
-
 ====
 
 == Primitives
