@@ -1,7 +1,8 @@
 = Pipes
 Pierre Radermecker <pierrer@pi3r.be>
 2014
-
+:imagesdir: img
+:data-uri:
 :language: haskell
 :source-highlighter: pygments
 :icons: font
@@ -9,26 +10,24 @@ Pierre Radermecker <pierrer@pi3r.be>
 .StateT
 [NOTE]
 ====
-[source, haskell]
-----
+```
 newtype StateT s m a = StateT {
     runStateT :: s -> m (a, s)
 }
-----
+```
 ====
 
 .Free Monad
 [NOTE]
 ====
-A Monad n is a free Monad for f
-    if every Monad homomorphism from n to another monad m is equivalent to a natural transformation from f to m.
+> A Monad n is a free Monad for f
+> if every Monad homomorphism from n to another monad m is equivalent to a natural transformation from f to m.
 
-[source, haskell]
-----
+```
 data Free f a = Free (f (Free f a)) | Pure a
 
 liftF :: Functor f => f a -> Free f a
-----
+```
 ====
 
 == Primitives
@@ -49,13 +48,13 @@ Pipes defines a single type `Proxy`:
      |         |
      +----|----+
           r
-
+....
+```
 type Effect = Proxy X () () X
 runEffect :: (Monad m) => Effect m r -> m r
-....
+```
 
 Effect is a proxy that never yield or wait.
-
 The default API exposes a pull-based unidirectional flow.
 
 === Producer
@@ -63,10 +62,6 @@ The default API exposes a pull-based unidirectional flow.
 A Producer is a monad transformer that extends any base monad with a yield command. `yield` emits a value, suspending the current Producer until the value is consumed. If nobody consumes the value (which is possible) then yield never returns.
 
 ....
- (MonadIO m) => Producer b m r
-
- type Producer' b m r = forall x' x . Proxy x' x () b m r
-
      +---------+
      |         |
 Void <==       <== ()
@@ -76,8 +71,9 @@ Void <==       <== ()
      +---------+
 ....
 
-[source, haskell]
-----
+```
+type Producer' b m r = forall x' x . Proxy x' x () b m r
+
 yield :: (Monad m) => b -> Producer' b m ()
 
 for :: (Monad m)
@@ -93,9 +89,9 @@ for :: (Monad m)
      -> (a -> Producer c m r)
 (f ~> g) x = for (f x) g
 
-----
-`~>` and yield form a Category ("Generator") where `yield` is the identity.
+```
 
+`~>` and yield form a Category ("Generator") where `yield` is the identity.
 
 With `for` you consume every element of a `Producer` the exact same way. If this is not suitable, use `next` or a `Consumer`.
 
@@ -121,8 +117,7 @@ A consumer represents an effectful sink of values.  `await` blocks waiting for a
      +---------+
 ....
 
-[source]
-----
+```
 await :: Monad m => Consumer' a m a
 
 -- repeatedly feeds `await` in the consumer with the action
@@ -142,7 +137,7 @@ await :: Monad m => Consumer' a m a
 
 (>~) and `await` form a Category  where `await` is the identity.
 
-----
+```
 
 === Pipe
 
@@ -174,17 +169,16 @@ cat = forever $ do
 === Bidirectional API
 
 .The response category
-....
+```
 yield = respond
 for = (//>)
 (~>) = (/>/)
-....
+```
 
 .The reply category
-....
+```
 await = request ()
-....
-
+```
 
 == Pipes-Parse
 
@@ -204,24 +198,21 @@ execStateT :: Parser a m r -> Producer a m x -> m (   Producer a m x)
 
 .Lenses
 Lenses served as transformation in both directions.
-
-[source]
-----
+```
 splitAt
     :: Monad m
     => Int
     -> Lens' (Producer a m x) (Producer a m (Producer a m x))
-----
+```
 
 .zoom
 Connect lenses to Parsers
-[source]
-----
+```
 zoom 
     :: Lens' (Producer a m x) (Producer b m y)
     -> Parser b m r
     -> Parser a m r
-----
+```
 
 `Iso'`: don't provide them if there is error messages involved in encoding and decoding. Stick to `Lens'`
 
@@ -256,17 +247,16 @@ By analogy, an output stream accepts output bytes and sends them to some sink. S
 
 .StateP
 Run `StateT` in the base monad of the Proxy passed as a second argument.
-[source]
-----
+```
 runStateP
     :: (Monad m)
     => s -- state (usually of type proxy)
     -> Proxy a' a b' b (S.StateT s m) r
     -> Proxy a' a b' b m (r, s)
-----
+```
 
-By example:
-----
+.Example
+```
 -- !! this return a Producer a m (Maybe r, Producer a m r) !!
 -- This makes sense you are actually running the StateT monad from Producer a (StateT (Producer a m r) m r) r
 -- r is either Just which means the original Producer is empty or Nothing which mean you should go on drawing from the original Producer
@@ -282,21 +272,15 @@ runStateP p $ do -- p will be used to feed the underlying proxy
             yield a -- push `a onto the top proxy
             (Just <$> input) >-> (Nothing <$ takeWhile (== a))  -- start streaming values from the underlying proxy
                                                                 --
-
-
-[a a a, b b b , c c c, Nothing Nothing Nothing
-----
-
-
+```
 
 == Concurrent API
 
 You have got a mailbox !
 
-[source, haskell]
-----
+```
 (output, input) <- spawn Unbounded
-----
+```
 
 ....
 producer >-> (consumer) output >...> input (producer) >-> consumer
@@ -304,10 +288,9 @@ producer >-> (consumer) output >...> input (producer) >-> consumer
 Send to the mailbox using `toOutput output` (output is able to sent mail). So `toOutput` transforms the output into a consumer.
 Read from the mailbox using `fromInput input` (input is able to receive mail). So `fromInput` transforms the input into a producer.
 
-[source]
-----
+```
 newtype Input a = Input { recv :: S.STM (Maybe a) }
-----
+```
 
 == Errors management
 
@@ -316,9 +299,7 @@ newtype Input a = Input { recv :: S.STM (Maybe a) }
 ====
 If you want to transform a Producer of ByteString into another Producer, for instance of csv records, be careful to be immune of empty bytestring chunks.
 Indeed `pipes-bytestring` operations don't guarantee that they won't drop empty bytestring chunks or create new ones.
-
-[source]
-----
+```
 -- first take the next elem of the source
 x <- lift (next source)
         case x of
@@ -327,10 +308,10 @@ x <- lift (next source)
                 if (B.null bs)
                 then continue k source'
                 else feedParser (k bs) source'
-----
+```
 ====
 
-== Arrows and push based pipes
+== Arrows and push based pipe
 
 Events are discrete <- PUSH based. +
 Behaviors are continuous <- PULL based
@@ -341,8 +322,7 @@ Behaviors are continuous <- PULL based
 
 https://github.com/Gabriel439/Haskell-Pipes-Parse-Library/blob/2.0.0/src/Pipes/Parse.hs#L236
 
-[source]
-----
+```
 type Producer b =                    Proxy Void () () b
 type Producer' b m r = forall x' x . Proxy x' x () b m r
-----
+```
